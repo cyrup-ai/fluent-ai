@@ -33,37 +33,11 @@ impl ProxyUrl {
 
 impl MessageChunk for ProxyUrl {
     fn bad_chunk(error: String) -> Self {
-        // QUICHE IPv6 pattern - keep it simple with unwrap_or_else (allowed)
         ProxyUrl {
-            url: crate::Url::parse("http://[::1]")
-                .unwrap_or_else(|_| crate::Url::parse("http://localhost")
-                    .unwrap_or_else(|_| crate::Url::parse("http://127.0.0.1")
-                        .unwrap_or_else(|_| crate::Url::parse("http://example.com")
-                            .unwrap_or_else(|_| crate::Url::parse("data:,fallback")
-                                .unwrap_or_else(|_| {
-                                    // Final fallback - create basic localhost
-                                    "http://0.0.0.0".parse().unwrap_or_else(|_| {
-                                        // Use direct string -> URL conversion
-                                        crate::Url::parse("file:///").unwrap_or_else(|_| {
-                                            // Create known working URL
-                                            crate::Url::parse("ftp://localhost").unwrap_or_else(|_| {
-                                                // This is extremely unlikely - just use error URL
-                                                match crate::Url::parse("about:blank") {
-                                                    Ok(u) => u,
-                                                    Err(_) => {
-                                                        // URL system broken - create dummy
-                                                        std::str::FromStr::from_str("http://broken").unwrap_or_else(|_| {
-                                                            // Absolute last resort
-                                                            crate::Url::parse("mailto:error@localhost").unwrap_or_else(|_| {
-                                                                panic!("Cannot parse any URL - system failure")
-                                                            })
-                                                        })
-                                                    }
-                                                }
-                                            })
-                                        })
-                                    })
-                                }))))),
+            url: crate::Url::parse("http://localhost")
+                .or_else(|_| crate::Url::parse("http://127.0.0.1"))
+                .or_else(|_| crate::Url::parse("http://[::1]"))
+                .expect("System failure: URL library cannot parse basic localhost URLs"),
             error_message: Some(error),
         }
     }

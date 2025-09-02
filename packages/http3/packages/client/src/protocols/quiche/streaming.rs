@@ -314,8 +314,9 @@ pub fn read_readable_streams(mut connection: Connection) -> AsyncStream<QuicheCo
             );
         } else if connection.is_closed() {
             // Use default socket addresses since they're not available in this context
+            // SECURITY: Handle hardcoded address parsing gracefully to prevent panics
             let default_addr = "0.0.0.0:0".parse()
-                .expect("Hardcoded default socket address should always parse successfully");
+                .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 0)));
             emit!(
                 sender,
                 QuicheConnectionChunk::connection_closed(default_addr, default_addr)

@@ -74,7 +74,6 @@ impl HttpProtocolStrategy {
                     enable_early_data: config.enable_early_data,
                     enable_0rtt: config.enable_early_data,
                     congestion_control: config.congestion_control,
-                    disable_ssrf_protection: false, // Secure by default for Quiche configs too
                 }))
             },
             Self::Auto { prefer, fallback_chain: _, configs } => {
@@ -224,12 +223,6 @@ pub struct H3Config {
     pub enable_early_data: bool,
     pub enable_0rtt: bool,
     pub congestion_control: CongestionControl,
-    /// Disable SSRF protection for testing/development environments
-    /// 
-    /// ⚠️  **SECURITY WARNING**: Only set to `true` in development/testing environments.
-    /// Disabling SSRF protection allows connections to localhost and internal networks,
-    /// which can be exploited for server-side request forgery attacks in production.
-    pub disable_ssrf_protection: bool,
 }
 
 impl Default for H3Config {
@@ -246,7 +239,6 @@ impl Default for H3Config {
             enable_early_data: true,
             enable_0rtt: true,
             congestion_control: CongestionControl::Cubic,
-            disable_ssrf_protection: false, // Secure by default
         }
     }
 }
@@ -265,7 +257,6 @@ impl H3Config {
             enable_early_data: true,
             enable_0rtt: true,
             congestion_control: CongestionControl::Bbr,
-            disable_ssrf_protection: false, // Secure by default
         }
     }
 
@@ -282,19 +273,10 @@ impl H3Config {
             enable_early_data: true,
             enable_0rtt: true,
             congestion_control: CongestionControl::Bbr,
-            disable_ssrf_protection: false, // Secure by default
         }
     }
 
-    /// Create development configuration with SSRF protection disabled
-    ///
-    /// ⚠️  **SECURITY WARNING**: This configuration disables SSRF protection and should
-    /// only be used in development/testing environments. DO NOT use in production.
-    pub fn development() -> Self {
-        let mut config = Self::default();
-        config.disable_ssrf_protection = true;
-        config
-    }
+
 }
 
 impl ProtocolConfig for H3Config {

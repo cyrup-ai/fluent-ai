@@ -94,6 +94,7 @@ if_hyper! {
                 let inner = crate::error::types::Inner {
                     kind: crate::error::types::Kind::Request,
                     source: None,
+                    url: None,
                 };
                 crate::HttpError { inner: Box::new(inner) }
             })

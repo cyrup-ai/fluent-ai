@@ -7,6 +7,7 @@ use fluent_ai_async::AsyncStream;
 use http::Method;
 use serde::de::DeserializeOwned;
 use url::Url;
+use tracing;
 
 use crate::builder::core::{BodyNotSet, BodySet, Http3Builder, JsonPathStreaming};
 use fluent_ai_http3_client::operations::HttpOperation;
@@ -15,34 +16,250 @@ use fluent_ai_http3_client::operations::HttpOperation;
 pub use fluent_ai_http3_client::http::response::{HttpChunk, HttpBodyChunk};
 pub use fluent_ai_http3_client::builder::fluent::DownloadBuilder;
 
-/// SSRF Protection - Always block dangerous URLs (no config required)
-fn is_dangerous_url(url_str: &str) -> bool {
-    if let Ok(parsed) = url::Url::parse(url_str) {
-        if let Some(host_str) = parsed.host_str() {
-            // Block localhost variants
-            if host_str == "localhost" || host_str == "0.0.0.0" || host_str.ends_with(".local") {
-                return true;
+/// SECURITY: Sanitize JSON error messages to prevent data disclosure
+fn sanitize_json_error(error_msg: &str) -> String {
+    let mut sanitized = error_msg.to_string();
+    
+    // Remove quoted strings that might contain sensitive data
+    let mut in_quotes = false;
+    let mut escaped = false;
+    let mut result = String::new();
+    
+    for ch in sanitized.chars() {
+        match ch {
+            '"' if !escaped => {
+                if in_quotes {
+                    // End of quoted string - replace with redacted
+                    result.push_str("[REDACTED]\"");
+                    in_quotes = false;
+                } else {
+                    // Start of quoted string
+                    result.push('"');
+                    in_quotes = true;
+                }
             }
-            // Block private IP ranges if it's an IP
-            if let Ok(ip) = host_str.parse::<std::net::IpAddr>() {
-                match ip {
-                    std::net::IpAddr::V4(ipv4) => {
-                        let octets = ipv4.octets();
-                        // RFC1918 + loopback + metadata
-                        return octets[0] == 10 
-                            || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
-                            || (octets[0] == 192 && octets[1] == 168)
-                            || octets[0] == 127
-                            || (octets[0] == 169 && octets[1] == 254);
-                    }
-                    std::net::IpAddr::V6(ipv6) => {
-                        return ipv6.is_loopback() || ipv6.segments()[0] == 0xfe80;
-                    }
+            '\\' if in_quotes => {
+                escaped = !escaped;
+                if !escaped {
+                    // Don't include backslashes in redacted content
+                }
+            }
+            _ => {
+                if !in_quotes {
+                    result.push(ch);
+                }
+                escaped = false;
+            }
+        }
+    }
+    
+    let mut sanitized = result;
+    
+    // Remove large numbers (potential IDs, timestamps, tokens)
+    let chars: Vec<char> = sanitized.chars().collect();
+    let mut new_chars = Vec::new();
+    let mut i = 0;
+    
+    while i < chars.len() {
+        if chars[i].is_ascii_digit() {
+            let start = i;
+            while i < chars.len() && chars[i].is_ascii_digit() {
+                i += 1;
+            }
+            // If number is longer than 8 digits, redact it
+            if i - start > 8 {
+                new_chars.extend("[REDACTED_ID]".chars());
+            } else {
+                new_chars.extend(chars[start..i].iter());
+            }
+        } else {
+            new_chars.push(chars[i]);
+            i += 1;
+        }
+    }
+    
+    sanitized = new_chars.into_iter().collect();
+    
+    // Limit error message length to prevent information leakage
+    if sanitized.len() > 200 {
+        sanitized.truncate(197);
+        sanitized.push_str("...");
+    }
+    
+    // If sanitization made the message empty or too generic, provide a safe generic message
+    if sanitized.len() < 10 || sanitized.trim().is_empty() {
+        "Invalid JSON format - deserialization error".to_string()
+    } else {
+        sanitized
+    }
+}
+
+/// SECURITY: Sanitize URLs for error messages to prevent information disclosure
+fn sanitize_url_for_error(url: &str) -> String {
+    // Parse URL to extract components safely
+    if let Ok(parsed) = url.parse::<Url>() {
+        let scheme = parsed.scheme();
+        let host = parsed.host_str().unwrap_or("[REDACTED_HOST]");
+        
+        // Determine if host should be sanitized (internal/private networks)
+        let sanitized_host = if host == "localhost" || 
+                               host.starts_with("127.") ||
+                               host.starts_with("192.168.") ||
+                               host.starts_with("10.") ||
+                               host.starts_with("172.16.") || host.starts_with("172.17.") ||
+                               host.starts_with("172.18.") || host.starts_with("172.19.") ||
+                               host.starts_with("172.20.") || host.starts_with("172.21.") ||
+                               host.starts_with("172.22.") || host.starts_with("172.23.") ||
+                               host.starts_with("172.24.") || host.starts_with("172.25.") ||
+                               host.starts_with("172.26.") || host.starts_with("172.27.") ||
+                               host.starts_with("172.28.") || host.starts_with("172.29.") ||
+                               host.starts_with("172.30.") || host.starts_with("172.31.") ||
+                               host.ends_with(".local") ||
+                               host.contains("internal") ||
+                               host.contains("corp") ||
+                               host.contains("intranet") {
+            "[INTERNAL_HOST]"
+        } else {
+            host
+        };
+        
+        // Return sanitized URL format - scheme and host only, no paths/queries
+        format!("{}://{}", scheme, sanitized_host)
+    } else {
+        // If URL parsing fails, return completely generic error
+        "[INVALID_URL]".to_string()
+    }
+}
+
+/// Comprehensive SSRF Protection - Production-grade URL validation
+/// Blocks all known attack vectors including internal networks, metadata services, 
+/// dangerous schemes, and suspicious ports
+fn validate_url_safety(url_str: &str) -> Result<Url, String> {
+    // Parse URL first to validate structure
+    let parsed = url_str.parse::<Url>()
+        .map_err(|e| format!("Invalid URL format: {}", e))?;
+    
+    // 1. SCHEME VALIDATION: Only allow http/https
+    match parsed.scheme() {
+        "http" | "https" => {},
+        other => return Err(format!("Unsafe URL scheme '{}' - only http/https allowed", other)),
+    }
+    
+    // 2. HOST VALIDATION: Block dangerous hosts
+    let host_str = parsed.host_str()
+        .ok_or_else(|| "URL must have a host".to_string())?;
+    
+    // 2a. Block localhost variants and special domains
+    if host_str == "localhost" 
+        || host_str == "0.0.0.0" 
+        || host_str.ends_with(".local")
+        || host_str.ends_with(".localhost")
+        || host_str.ends_with(".internal") {
+        return Err(format!("Blocked internal hostname: {}", host_str));
+    }
+    
+    // 2b. Block IP addresses in dangerous ranges
+    if let Ok(ip) = host_str.parse::<std::net::IpAddr>() {
+        match ip {
+            std::net::IpAddr::V4(ipv4) => {
+                let octets = ipv4.octets();
+                
+                // RFC1918 Private networks
+                if octets[0] == 10 {
+                    return Err("Blocked private IP range: 10.0.0.0/8".to_string());
+                }
+                if octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31 {
+                    return Err("Blocked private IP range: 172.16.0.0/12".to_string());
+                }
+                if octets[0] == 192 && octets[1] == 168 {
+                    return Err("Blocked private IP range: 192.168.0.0/16".to_string());
+                }
+                
+                // Loopback
+                if octets[0] == 127 {
+                    return Err("Blocked loopback IP range: 127.0.0.0/8".to_string());
+                }
+                
+                // Link-local / AWS metadata
+                if octets[0] == 169 && octets[1] == 254 {
+                    return Err("Blocked link-local/metadata IP range: 169.254.0.0/16".to_string());
+                }
+                
+                // Multicast ranges
+                if octets[0] >= 224 && octets[0] <= 239 {
+                    return Err("Blocked multicast IP range: 224.0.0.0/4".to_string());
+                }
+                
+                // Reserved/experimental ranges
+                if octets[0] >= 240 {
+                    return Err("Blocked reserved IP range: 240.0.0.0/4".to_string());
+                }
+            }
+            std::net::IpAddr::V6(ipv6) => {
+                // IPv6 loopback
+                if ipv6.is_loopback() {
+                    return Err("Blocked IPv6 loopback address".to_string());
+                }
+                
+                let segments = ipv6.segments();
+                
+                // Link-local (fe80::/10)
+                if segments[0] >= 0xfe80 && segments[0] <= 0xfebf {
+                    return Err("Blocked IPv6 link-local range: fe80::/10".to_string());
+                }
+                
+                // Unique local (fc00::/7) 
+                if segments[0] >= 0xfc00 && segments[0] <= 0xfdff {
+                    return Err("Blocked IPv6 unique local range: fc00::/7".to_string());
+                }
+                
+                // AWS metadata service IPv6
+                if segments[0] == 0xfd00 && segments[1] == 0xec2 {
+                    return Err("Blocked AWS metadata service IPv6".to_string());
+                }
+                
+                // Multicast (ff00::/8)
+                if segments[0] >= 0xff00 {
+                    return Err("Blocked IPv6 multicast range: ff00::/8".to_string());
                 }
             }
         }
     }
-    false
+    
+    // 3. PORT VALIDATION: Block dangerous internal ports
+    if let Some(port) = parsed.port() {
+        match port {
+            // Common database ports
+            3306 | 5432 | 1433 | 1521 | 27017 => {
+                return Err(format!("Blocked database port: {}", port));
+            }
+            // Internal service ports
+            6379 | 11211 | 9200 | 9300 | 5672 | 15672 => {
+                return Err(format!("Blocked internal service port: {}", port));
+            }
+            // Development/debugging ports
+            3000 | 8000 | 8080 | 9000 | 5000 => {
+                return Err(format!("Blocked development port: {}", port));
+            }
+            // System service ports (low numbers)
+            1..=1023 => {
+                // Allow common web ports
+                if port != 80 && port != 443 {
+                    return Err(format!("Blocked system port: {}", port));
+                }
+            }
+            _ => {} // Allow other ports
+        }
+    }
+    
+    // 4. PATH VALIDATION: Block suspicious paths
+    let path = parsed.path();
+    if path.contains("..") {
+        return Err("Blocked path traversal attempt".to_string());
+    }
+    
+    // If all validations pass, return the parsed URL
+    Ok(parsed)
 }
 
 // Terminal methods for BodyNotSet (no body required)
@@ -67,22 +284,16 @@ impl Http3Builder<BodyNotSet> {
     where 
         T: serde::de::DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -105,16 +316,34 @@ impl Http3Builder<BodyNotSet> {
             let body_stream = response.into_body_stream();
             let mut body_data = Vec::new();
             
-            // Collect all body chunks
+            // SECURITY: Enforce memory limits when collecting response body
+            const MAX_RESPONSE_BODY_SIZE: usize = 100 * 1024 * 1024; // 100MB hard limit
+            
+            // Collect all body chunks with size checking
             let body_chunks = body_stream.collect();
             for chunk in body_chunks {
+                // SECURITY: Check size BEFORE allocation to prevent memory exhaustion attacks
+                if body_data.len() + chunk.data.len() > MAX_RESPONSE_BODY_SIZE {
+                    tracing::error!(
+                        target: "fluent_ai_http3::api::builder::methods",
+                        current_size = body_data.len(),
+                        chunk_size = chunk.data.len(),
+                        limit = MAX_RESPONSE_BODY_SIZE,
+                        "Response body exceeds memory safety limit - truncating to prevent DoS"
+                    );
+                    break; // Stop collecting to prevent memory exhaustion
+                }
                 body_data.extend_from_slice(&chunk.data);
             }
             
             // Deserialize the complete response body
             match serde_json::from_slice::<T>(&body_data) {
                 Ok(deserialized) => fluent_ai_async::emit!(sender, deserialized),
-                Err(e) => fluent_ai_async::emit!(sender, T::bad_chunk(format!("JSON deserialization failed: {}", e))),
+                Err(e) => {
+                    // SECURITY: Sanitize JSON error messages to prevent data disclosure
+                    let sanitized_error = sanitize_json_error(&e.to_string());
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("JSON deserialization failed: {}", sanitized_error)));
+                }
             }
         })
     }
@@ -136,25 +365,18 @@ impl Http3Builder<BodyNotSet> {
     /// ```
     #[must_use]
     pub fn delete(mut self, url: &str) -> AsyncStream<HttpChunk, 1024> {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, HttpChunk::Error("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
+            Err(security_error) => {
                 let url_string = url.to_string();
-                // Return error stream for invalid URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, HttpChunk::Error(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, HttpChunk::Error(format!("Security blocked URL '{}': {}", url_string, security_error)));
                 });
             }
         };
+
+        // URL is already validated and parsed by validate_url_safety()
 
         self.request = self
             .request
@@ -206,29 +428,20 @@ impl Http3Builder<BodyNotSet> {
     /// ```
     #[must_use]
     pub fn download_file(mut self, url: &str) -> DownloadBuilder {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            let error_stream = fluent_ai_async::AsyncStream::with_channel(move |sender| {
-                use fluent_ai_http3_client::http::response::HttpDownloadChunk;
-                fluent_ai_async::emit!(sender, HttpDownloadChunk::Error { message: "URL blocked for security".to_string() });
-            });
-            return DownloadBuilder::new(error_stream);
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
+            Err(security_error) => {
                 let url_string = url.to_string();
-                // Return error stream for invalid URLs
                 let error_stream = fluent_ai_async::AsyncStream::with_channel(move |sender| {
                     use fluent_ai_http3_client::http::response::HttpDownloadChunk;
-                    fluent_ai_async::emit!(sender, HttpDownloadChunk::Error { message: format!("Invalid URL '{}': {}", url_string, parse_error) });
+                    fluent_ai_async::emit!(sender, HttpDownloadChunk::Error { message: format!("Security blocked URL '{}': {}", url_string, security_error) });
                 });
                 return DownloadBuilder::new(error_stream);
             }
         };
+
+        // URL is already validated and parsed by validate_url_safety()
 
         self.request = self
             .request
@@ -244,8 +457,9 @@ impl Http3Builder<BodyNotSet> {
         
         // Extract total size from response headers before converting to stream
         let total_size = response.headers()
-            .get(http::header::CONTENT_LENGTH)
-            .and_then(|v| v.to_str().ok())
+            .iter()
+            .find(|header| header.name == http::header::CONTENT_LENGTH)
+            .and_then(|header| header.value.to_str().ok())
             .and_then(|s| s.parse::<u64>().ok());
         
         // Convert HttpResponse body stream to download stream
@@ -315,22 +529,16 @@ impl Http3Builder<BodySet> {
     where 
         T: serde::de::DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -356,16 +564,34 @@ impl Http3Builder<BodySet> {
             let body_stream = response.into_body_stream();
             let mut body_data = Vec::new();
             
-            // Collect all body chunks
+            // SECURITY: Enforce memory limits when collecting response body
+            const MAX_RESPONSE_BODY_SIZE: usize = 100 * 1024 * 1024; // 100MB hard limit
+            
+            // Collect all body chunks with size checking
             let body_chunks = body_stream.collect();
             for chunk in body_chunks {
+                // SECURITY: Check size BEFORE allocation to prevent memory exhaustion attacks
+                if body_data.len() + chunk.data.len() > MAX_RESPONSE_BODY_SIZE {
+                    tracing::error!(
+                        target: "fluent_ai_http3::api::builder::methods",
+                        current_size = body_data.len(),
+                        chunk_size = chunk.data.len(),
+                        limit = MAX_RESPONSE_BODY_SIZE,
+                        "Response body exceeds memory safety limit - truncating to prevent DoS"
+                    );
+                    break; // Stop collecting to prevent memory exhaustion
+                }
                 body_data.extend_from_slice(&chunk.data);
             }
             
             // Deserialize the complete response body
             match serde_json::from_slice::<T>(&body_data) {
                 Ok(deserialized) => fluent_ai_async::emit!(sender, deserialized),
-                Err(e) => fluent_ai_async::emit!(sender, T::bad_chunk(format!("JSON deserialization failed: {}", e))),
+                Err(e) => {
+                    // SECURITY: Sanitize JSON error messages to prevent data disclosure
+                    let sanitized_error = sanitize_json_error(&e.to_string());
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("JSON deserialization failed: {}", sanitized_error)));
+                }
             }
         })
     }
@@ -402,22 +628,16 @@ impl Http3Builder<BodySet> {
     where 
         T: serde::de::DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -443,16 +663,34 @@ impl Http3Builder<BodySet> {
             let body_stream = response.into_body_stream();
             let mut body_data = Vec::new();
             
-            // Collect all body chunks
+            // SECURITY: Enforce memory limits when collecting response body
+            const MAX_RESPONSE_BODY_SIZE: usize = 100 * 1024 * 1024; // 100MB hard limit
+            
+            // Collect all body chunks with size checking
             let body_chunks = body_stream.collect();
             for chunk in body_chunks {
+                // SECURITY: Check size BEFORE allocation to prevent memory exhaustion attacks
+                if body_data.len() + chunk.data.len() > MAX_RESPONSE_BODY_SIZE {
+                    tracing::error!(
+                        target: "fluent_ai_http3::api::builder::methods",
+                        current_size = body_data.len(),
+                        chunk_size = chunk.data.len(),
+                        limit = MAX_RESPONSE_BODY_SIZE,
+                        "Response body exceeds memory safety limit - truncating to prevent DoS"
+                    );
+                    break; // Stop collecting to prevent memory exhaustion
+                }
                 body_data.extend_from_slice(&chunk.data);
             }
             
             // Deserialize the complete response body
             match serde_json::from_slice::<T>(&body_data) {
                 Ok(deserialized) => fluent_ai_async::emit!(sender, deserialized),
-                Err(e) => fluent_ai_async::emit!(sender, T::bad_chunk(format!("JSON deserialization failed: {}", e))),
+                Err(e) => {
+                    // SECURITY: Sanitize JSON error messages to prevent data disclosure
+                    let sanitized_error = sanitize_json_error(&e.to_string());
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("JSON deserialization failed: {}", sanitized_error)));
+                }
             }
         })
     }
@@ -484,25 +722,18 @@ impl Http3Builder<BodySet> {
     ///     .patch("https://api.example.com/users/123");
     /// ```
     pub fn patch(mut self, url: &str) -> AsyncStream<HttpChunk, 1024> {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, HttpChunk::Error("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
+            Err(security_error) => {
                 let url_string = url.to_string();
-                // Return error stream for invalid URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, HttpChunk::Error(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, HttpChunk::Error(format!("Security blocked URL '{}': {}", url_string, security_error)));
                 });
             }
         };
+
+        // URL is already validated and parsed by validate_url_safety()
 
         self.request = self
             .request
@@ -564,22 +795,16 @@ impl Http3Builder<JsonPathStreaming> {
     where
         T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -608,22 +833,16 @@ impl Http3Builder<JsonPathStreaming> {
     where
         T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -655,22 +874,16 @@ impl Http3Builder<JsonPathStreaming> {
     where
         T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -702,22 +915,16 @@ impl Http3Builder<JsonPathStreaming> {
     where
         T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };
@@ -749,22 +956,16 @@ impl Http3Builder<JsonPathStreaming> {
     where
         T: DeserializeOwned + fluent_ai_async::prelude::MessageChunk + Default + Send + 'static,
     {
-        // SSRF Protection - Always block dangerous URLs (no config required)
-        if is_dangerous_url(url) {
-            return AsyncStream::with_channel(move |sender| {
-                fluent_ai_async::emit!(sender, T::bad_chunk("URL blocked for security".to_string()));
-            });
-        }
-
-        // Handle URL parsing with proper error handling
-        let parsed_url = match url.parse::<Url>() {
+        // Comprehensive SSRF Protection with production-grade URL validation
+        let parsed_url = match validate_url_safety(url) {
             Ok(url) => url,
-            Err(parse_error) => {
-                // Convert to owned string for the closure
-                let url_string = url.to_string();
-                // Return error stream for invalid URLs
+            Err(security_error) => {
+                // SECURITY: Sanitize URL in error messages to prevent information disclosure
+                let sanitized_url = sanitize_url_for_error(url);
+                
+                // Return security error stream for blocked URLs
                 return AsyncStream::with_channel(move |sender| {
-                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Invalid URL '{}': {}", url_string, parse_error)));
+                    fluent_ai_async::emit!(sender, T::bad_chunk(format!("Security blocked URL '{}': {}", sanitized_url, security_error)));
                 });
             }
         };

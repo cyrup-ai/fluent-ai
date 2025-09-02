@@ -13,6 +13,7 @@ pub struct Error {
 pub struct Inner {
     pub kind: Kind,
     pub source: Option<Box<dyn StdError + Send + Sync>>,
+    pub url: Option<url::Url>,
 }
 
 impl Clone for Inner {
@@ -20,6 +21,7 @@ impl Clone for Inner {
         Inner {
             kind: self.kind.clone(),
             source: None, // Cannot clone trait objects, so we lose the source
+            url: self.url.clone(),
         }
     }
 }
@@ -41,7 +43,7 @@ pub enum Kind {
 impl Error {
     pub fn new(kind: Kind) -> Error {
         Error {
-            inner: Box::new(Inner { kind, source: None }),
+            inner: Box::new(Inner { kind, source: None, url: None }),
         }
     }
 
@@ -50,25 +52,36 @@ impl Error {
         self
     }
 
-    pub fn with_url(self, _url: crate::Url) -> Self {
-        // For now, just return self since we don't have URL storage in our simplified structure
-        // This maintains API compatibility
+    pub fn with_url(mut self, url: url::Url) -> Self {
+        // Store URL context for better error reporting and debugging
+        let mut inner = (*self.inner).clone();
+        inner.url = Some(url);
+        self.inner = Box::new(inner);
         self
     }
 
     pub(super) fn kind(&self) -> &Kind {
         &self.inner.kind
     }
+    
+    /// Get the URL associated with this error, if any
+    pub fn url(&self) -> Option<&url::Url> {
+        self.inner.url.as_ref()
+    }
 }
 
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut f = f.debug_struct("hyper::Error");
+        let mut f = f.debug_struct("fluent_ai_http3::Error");
 
         f.field("kind", &self.inner.kind);
 
         if let Some(ref source) = self.inner.source {
             f.field("source", source);
+        }
+
+        if let Some(ref url) = self.inner.url {
+            f.field("url", url);
         }
 
         f.finish()

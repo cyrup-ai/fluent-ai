@@ -99,13 +99,22 @@ impl Intercepted {
     }
 
     /// Returns the URI of the first proxy.
-    pub fn uri(&self) -> &Uri {
-        // Return the URI of the first proxy, or panic if no proxies
-        // This should only be called after ensuring proxies exist
+    /// 
+    /// # Errors
+    /// Returns an error if no proxies are configured. Check `has_proxies()` first.
+    pub fn uri(&self) -> Result<&Uri, &'static str> {
         if self.proxies.is_empty() {
-            panic!("No proxies available - call matching() first or check has_proxies()");
+            tracing::error!("uri() called on InterceptedService with no proxies configured");
+            Err("No proxies available - call matching() first or check has_proxies()")
+        } else {
+            Ok(&self.proxies[0].uri)
         }
-        &self.proxies[0].uri
+    }
+
+    /// Returns the URI of the first proxy, or None if no proxies configured.
+    /// Safe alternative that doesn't return Result.
+    pub fn first_uri(&self) -> Option<&Uri> {
+        self.proxies.first().map(|p| &p.uri)
     }
 
     /// Check if there are any proxies configured

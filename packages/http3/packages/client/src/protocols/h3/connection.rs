@@ -345,64 +345,44 @@ impl H3Stream {
 }
 
 impl MessageChunk for H3Connection {
-    fn bad_chunk(_error: String) -> Self {
-        // Create a minimal quiche config for error cases with proper error handling
-        let config_result = quiche::Config::new(quiche::PROTOCOL_VERSION)
-            .and_then(|mut config| {
-                config.set_application_protos(&[b"h3"])?;
-                Ok(config)
-            });
-
-        let mut config = match config_result {
-            Ok(c) => c,
-            Err(_) => {
-                // Fallback to default config if creation fails
-                return Self {
-                    inner: Arc::new(std::sync::Mutex::new(
-                        // Create a minimal connection that will immediately be marked as closed
-                        quiche::Config::new(quiche::PROTOCOL_VERSION)
-                            .map(|mut c| {
-                                let _ = c.set_application_protos(&[b"h3"]);
-                                let scid = quiche::ConnectionId::from_ref(&[0; 16]);
-                                let addr = "127.0.0.1:0".parse().unwrap_or_else(|_| std::net::SocketAddr::from(([127, 0, 0, 1], 0)));
-                                quiche::connect(None, &scid, addr, addr, &mut c)
-                                    .unwrap_or_else(|_| quiche::accept(&scid, None, addr, addr, &mut c).unwrap_or_else(|_| panic!("Failed to create error connection")))
-                            })
-                            .unwrap_or_else(|_| panic!("Failed to create fallback config"))
-                    )),
-                    config: TimeoutConfig::default(),
-                };
+    fn bad_chunk(error: String) -> Self {
+        tracing::error!("Creating error H3Connection: {}", error);
+        
+        // Create connection ID and address for error connection
+        let scid = quiche::ConnectionId::from_ref(&[0; 16]);
+        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 0));
+        
+        // Create configuration for error connection
+        let mut config = match quiche::Config::new(quiche::PROTOCOL_VERSION) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                tracing::error!("Failed to create quiche config for error connection: {}", e);
+                panic!("System failure: Unable to create quiche config for error handling: {}", e);
             }
         };
-
-        let scid = quiche::ConnectionId::from_ref(&[0; 16]);
-        let addr_result = "127.0.0.1:0".parse();
-        let addr = match addr_result {
-            Ok(a) => a,
-            Err(_) => std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
-        };
-
-        let conn_result = quiche::connect(None, &scid, addr, addr, &mut config);
-        let conn = match conn_result {
-            Ok(c) => c,
+        
+        // Set application protocols
+        if let Err(e) = config.set_application_protos(&[b"h3"]) {
+            tracing::error!("Failed to set application protos for error connection: {}", e);
+        }
+        
+        // Create the connection - try connect first, then accept
+        let connection = match quiche::connect(None, &scid, addr, addr, &mut config) {
+            Ok(conn) => conn,
             Err(_) => {
-                // Try accept as fallback
+                // Fallback to accept
                 match quiche::accept(&scid, None, addr, addr, &mut config) {
-                    Ok(c) => c,
-                    Err(_) => {
-                        // Last resort - create a minimal connection that will be marked as error
-                        let mut fallback_config = quiche::Config::new(quiche::PROTOCOL_VERSION)
-                            .unwrap_or_else(|_| panic!("Critical: Cannot create any quiche config"));
-                        let _ = fallback_config.set_application_protos(&[b"h3"]);
-                        quiche::connect(None, &scid, addr, addr, &mut fallback_config)
-                            .unwrap_or_else(|_| panic!("Critical: Cannot create any quiche connection"))
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        tracing::error!("Failed to create any type of QUIC connection for error handling: {}", e);
+                        panic!("System failure: Unable to create QUIC connection for error handling: {}", e);
                     }
                 }
             }
         };
 
         Self {
-            inner: Arc::new(std::sync::Mutex::new(conn)),
+            inner: Arc::new(std::sync::Mutex::new(connection)),
             config: TimeoutConfig::default(),
         }
     }

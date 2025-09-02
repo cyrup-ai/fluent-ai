@@ -3,7 +3,7 @@
 //! Converts single-node nodelist to value (errors on multi-node or empty)
 
 use super::super::core::FunctionEvaluator;
-// jsonpath_nodelist module not available - removed::JsonPathNodelistEvaluator;
+use crate::jsonpath::functions::jsonpath_nodelist::JsonPathNodelistEvaluator;
 use crate::jsonpath::error::{JsonPathResult, constructors::invalid_expression_error};
 use crate::jsonpath::parser::{FilterExpression, FilterValue};
 
@@ -45,9 +45,8 @@ fn evaluate_jsonpath_expression(
     context: &serde_json::Value,
     selectors: &[crate::jsonpath::parser::JsonSelector],
 ) -> JsonPathResult<FilterValue> {
-    // TODO: Implement proper JsonPathNodelistEvaluator when available
-    // For now, return a simple evaluation result
-    let nodelist = vec![context.clone()];
+    // Use proper JsonPathNodelistEvaluator to evaluate the JSONPath selectors
+    let nodelist = JsonPathNodelistEvaluator::evaluate_jsonpath_nodelist(context, selectors)?;
 
     if nodelist.is_empty() {
         return Err(invalid_expression_error(

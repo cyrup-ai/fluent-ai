@@ -322,8 +322,25 @@ impl HttpResponse {
     
     /// Get a specific header value by name
     pub fn header(&self, name: &str) -> Option<HeaderValue> {
-        // This would need to iterate through headers_internal
-        // For now, return None (proper implementation would cache headers)
+        // Check cached headers if available
+        if let Ok(cache) = self.cached_headers.read() {
+            if let Some(ref headers) = *cache {
+                // Search through cached headers for matching name (case-insensitive)
+                for http_header in headers {
+                    if http_header.name.as_str().eq_ignore_ascii_case(name) {
+                        return Some(http_header.value.clone());
+                    }
+                }
+            }
+        }
+        
+        // No cached headers available or header not found
+        // For streaming responses, user should call collect_and_cache_headers() first
+        tracing::debug!(
+            target: "fluent_ai_http3::http::response",
+            header_name = name,
+            "Header lookup on uncached response - call collect_and_cache_headers() first for streaming responses"
+        );
         None
     }
     
@@ -424,7 +441,53 @@ impl HttpResponse {
         }
     }
 
+    /// Create HttpResponse from cached entry
+    /// 
+    /// Converts a CacheEntry back into an HttpResponse for serving cached responses.
+    pub fn from_cache_entry(cache_entry: crate::cache::cache_entry::CacheEntry) -> Self {
+        use crate::http::response::{HttpBodyChunk, HttpHeader};
+        
+        // Create channels for streaming the cached data
+        let (headers_sender, headers_stream) = AsyncStream::channel();
+        let (body_sender, body_stream) = AsyncStream::channel();
+        let (_, trailers_stream) = AsyncStream::channel(); // No trailers in cache
 
+        // Emit cached headers
+        for (name, value) in cache_entry.headers.iter() {
+            let http_header = HttpHeader {
+                name: name.clone(),
+                value: value.clone(),
+                timestamp: Instant::now(),
+            };
+            // Emit header to stream
+            drop(headers_sender.send(http_header));
+        }
+
+        // Emit cached body as single chunk
+        if !cache_entry.body.is_empty() {
+            let body_chunk = HttpBodyChunk::new(cache_entry.body.clone(), 0, true);
+            drop(body_sender.send(body_chunk));
+        }
+
+        Self {
+            status: AtomicU16::new(cache_entry.status.as_u16()),
+            headers_internal: headers_stream,
+            body_internal: body_stream,
+            trailers_internal: trailers_stream,
+            version: cache_entry.version,
+            stream_id: 0, // Cache entries don't have stream IDs
+            cached_etag: if let Some(etag) = cache_entry.etag {
+                let cell = once_cell::sync::OnceCell::new();
+                cell.set(etag).ok();
+                cell
+            } else {
+                once_cell::sync::OnceCell::new()
+            },
+            cached_last_modified: once_cell::sync::OnceCell::new(), // Would need conversion from SystemTime
+            cached_headers: RwLock::new(None),
+            cached_body: RwLock::new(Some(cache_entry.body.to_vec())),
+        }
+    }
 
     /// Create HttpResponse from HTTP/2 response
     pub fn from_http2_response(
@@ -698,6 +761,8 @@ impl HttpBodyChunk {
             timestamp: Instant::now(),
         }
     }
+
+
 }
 
 impl fluent_ai_async::prelude::MessageChunk for HttpResponse {

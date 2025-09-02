@@ -2,6 +2,7 @@ use bytes::Bytes;
 use fluent_ai_async::prelude::MessageChunk;
 use fluent_ai_async::{AsyncStream, AsyncStreamSender, handle_error};
 use serde::de::DeserializeOwned;
+use http_body::Body;
 
 use super::super::{JsonArrayStream, JsonPathError};
 use super::types::{ErrorRecoveryState, JsonStreamProcessor, ProcessorStats};
@@ -94,31 +95,86 @@ where
     }
 
     /// Process HTTP response body into streaming objects
-    pub fn process_body<B>(mut self, body: B) -> AsyncStream<T, 1024>
+    pub fn process_body<B>(mut self, mut body: B) -> AsyncStream<T, 1024>
     where
         B: http_body::Body<Data = Bytes> + Send + Sync + 'static + Unpin,
         B::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send + Sync + 'static,
         T: MessageChunk + MessageChunk + Default + Send + 'static,
     {
+        use std::future::Future;
+        use std::pin::Pin;
+        use std::task::{Context, Poll};
+        
         AsyncStream::with_channel(move |sender: AsyncStreamSender<T>| {
-            // TODO: Implement proper body streaming when stream_body_data is available
-            // For now, create a simple stream from the body
-            let body_stream = std::iter::once(body);
-
-            for body in body_stream {
-                // Convert body to bytes for processing
-                let body_bytes = Bytes::new(); // Placeholder for now
-
-                // Record processing
-                self.stats.record_chunk_processed(0);
-
-                if let Err(e) = self.process_body_chunk(&sender, body_bytes) {
-                    self.stats.record_processing_error();
-                    handle_error!(e, "Body chunk processing failed");
-                } else {
-                    self.record_success();
+            // Process body by polling for data frames
+            let mut total_bytes_processed = 0usize;
+            
+            // Create a simple executor context for polling the body
+            let waker = futures::task::noop_waker();
+            let mut cx = Context::from_waker(&waker);
+            
+            // Poll the body for data chunks
+            loop {
+                // Pin the body for polling
+                let pinned_body = Pin::new(&mut body);
+                
+                match pinned_body.poll_frame(&mut cx) {
+                    Poll::Ready(Some(Ok(frame))) => {
+                        // Check if this is a data frame
+                        if let Some(data) = frame.data_ref() {
+                            let chunk_size = data.len();
+                            total_bytes_processed += chunk_size;
+                            
+                            // Record chunk processing
+                            self.stats.record_chunk_processed(chunk_size);
+                            
+                            // Process the chunk
+                            if let Err(e) = self.process_body_chunk(&sender, data.clone()) {
+                                self.stats.record_processing_error();
+                                handle_error!(e, "Body chunk processing failed");
+                                break;
+                            } else {
+                                self.record_success();
+                            }
+                        }
+                        // Handle trailers and other frame types as needed
+                        // Check if this is the last frame by checking if data is empty and this is a data frame
+                        if let Some(data_ref) = frame.data_ref() {
+                            if data_ref.is_empty() {
+                                break;
+                            }
+                        }
+                    }
+                    Poll::Ready(Some(Err(e))) => {
+                        // Body error occurred
+                        self.stats.record_processing_error();
+                        let error_msg = format!("HTTP body error: {}", e.into());
+                        handle_error!(
+                            JsonPathError::new(
+                                crate::jsonpath::error::ErrorKind::IoError, 
+                                error_msg
+                            ), 
+                            "HTTP body stream error"
+                        );
+                        break;
+                    }
+                    Poll::Ready(None) => {
+                        // End of body stream
+                        break;
+                    }
+                    Poll::Pending => {
+                        // No data available right now, yield and try again
+                        std::thread::yield_now();
+                        continue;
+                    }
                 }
             }
+            
+            tracing::debug!(
+                target: "fluent_ai_http3::jsonpath::stream_processor",
+                total_bytes = total_bytes_processed,
+                "Completed processing HTTP body stream"
+            );
         })
     }
 

@@ -173,10 +173,46 @@ impl ResponseCache {
         if response.is_error() {
             return false;
         }
-
-        // Check Cache-Control directives
-        // Note: Would need to collect headers for full implementation
-        // For now, allow caching of success responses
+        
+        // Check for explicit no-cache directives
+        if let Some(cache_control) = response.header("cache-control") {
+            let cache_control_str = cache_control.to_str().unwrap_or("");
+            let cache_control_lower = cache_control_str.to_lowercase();
+            
+            // Check for no-cache, no-store, or private directives
+            if cache_control_lower.contains("no-cache") 
+                || cache_control_lower.contains("no-store") 
+                || cache_control_lower.contains("private") {
+                tracing::debug!(
+                    target: "fluent_ai_http3::cache::response_cache",
+                    cache_control = cache_control_str,
+                    "Response marked as not cacheable by Cache-Control header"
+                );
+                return false;
+            }
+            
+            // Check for max-age=0 which effectively disables caching
+            if cache_control_lower.contains("max-age=0") {
+                tracing::debug!(
+                    target: "fluent_ai_http3::cache::response_cache", 
+                    "Response has max-age=0, not caching"
+                );
+                return false;
+            }
+        }
+        
+        // Check for Pragma: no-cache (HTTP/1.0 legacy)
+        if let Some(pragma) = response.header("pragma") {
+            if pragma.to_str().unwrap_or("").to_lowercase().contains("no-cache") {
+                tracing::debug!(
+                    target: "fluent_ai_http3::cache::response_cache",
+                    "Response has Pragma: no-cache, not caching"
+                );
+                return false;
+            }
+        }
+        
+        // Default to allowing caching for success responses
         true
     }
 

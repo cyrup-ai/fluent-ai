@@ -33,6 +33,7 @@ hashbrown = "0.15.1"
 
 # Logging
 log = "0.4.27"
+tracing = "0.1.41"
 
 # Bytes manipulation
 bytes = "1.10.1"

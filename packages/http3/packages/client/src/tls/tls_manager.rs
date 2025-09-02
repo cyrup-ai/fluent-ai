@@ -554,8 +554,9 @@ impl rustls::client::danger::ServerCertVerifier for EnterpriseServerCertVerifier
                         tracing::debug!("CRL validation passed for {:?} against {}", server_name, crl_url);
                     },
                     Ok(crate::tls::crl_cache::CrlStatus::Revoked) => {
-                        tracing::error!("Certificate revoked via CRL for {:?} against {}", server_name, crl_url);
-                        return Err(rustls::Error::General(format!("Certificate revoked via CRL: {}", crl_url)));
+                        // SECURITY: Don't expose internal CRL URLs in logs or error messages
+                        tracing::error!("Certificate revoked via CRL for {:?}", server_name);
+                        return Err(rustls::Error::General("Certificate revoked via CRL check".to_string()));
                     },
                     Ok(crate::tls::crl_cache::CrlStatus::Unknown) => {
                         tracing::warn!("CRL validation inconclusive for {:?} against {}", server_name, crl_url);

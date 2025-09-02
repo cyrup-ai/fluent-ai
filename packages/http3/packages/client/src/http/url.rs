@@ -9,6 +9,7 @@ pub fn validate_url(url_str: &str) -> Result<(), crate::error::HttpError> {
         let inner = crate::error::types::Inner {
             kind: crate::error::types::Kind::Request,
             source: None,
+            url: None,
         };
         crate::error::types::Error {
             inner: Box::new(inner),
@@ -23,6 +24,7 @@ pub fn normalize_url(url_str: &str) -> Result<String, crate::error::HttpError> {
         let inner = crate::error::types::Inner {
             kind: crate::error::types::Kind::Request,
             source: None,
+            url: None,
         };
         crate::error::types::Error {
             inner: Box::new(inner),
@@ -53,6 +55,7 @@ pub fn parse_url(url_str: &str) -> Result<Url, crate::error::HttpError> {
         let inner = crate::error::types::Inner {
             kind: crate::error::types::Kind::Request,
             source: None,
+            url: None,
         };
         crate::error::types::Error {
             inner: Box::new(inner),
@@ -93,6 +96,7 @@ pub fn build_url(
         let inner = crate::error::types::Inner {
             kind: crate::error::types::Kind::Request,
             source: None,
+            url: None,
         };
         crate::error::types::Error {
             inner: Box::new(inner),

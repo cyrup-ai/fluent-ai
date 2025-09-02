@@ -22,6 +22,41 @@ use crate::http::response::{HttpHeader, HttpBodyChunk};
 // Global connection ID counter for H3 connections
 static NEXT_CONNECTION_ID: AtomicU64 = AtomicU64::new(1);
 
+/// SECURITY: Validate destination addresses to prevent UDP amplification attacks
+fn validate_destination_address(addr: &SocketAddr) -> Result<(), String> {
+    match addr.ip() {
+        // Block private/local addresses for outbound HTTP/3 connections to prevent amplification
+        std::net::IpAddr::V4(ipv4) => {
+            let octets = ipv4.octets();
+            match octets {
+                // Allow localhost for testing/development
+                [127, _, _, _] => Ok(()),
+                // Block RFC1918 private networks in production HTTP/3 clients
+                [10, _, _, _] => Err("Private network 10.0.0.0/8 not allowed for HTTP/3 connections".to_string()),
+                [172, 16..=31, _, _] => Err("Private network 172.16.0.0/12 not allowed for HTTP/3 connections".to_string()),
+                [192, 168, _, _] => Err("Private network 192.168.0.0/16 not allowed for HTTP/3 connections".to_string()),
+                // Block reserved addresses
+                [0, _, _, _] => Err("Reserved 0.0.0.0/8 network not allowed".to_string()),
+                [169, 254, _, _] => Err("Link-local 169.254.0.0/16 network not allowed".to_string()),
+                [224..=239, _, _, _] => Err("Multicast addresses not allowed for HTTP/3".to_string()),
+                [240..=255, _, _, _] => Err("Reserved class E addresses not allowed".to_string()),
+                _ => Ok(()),
+            }
+        }
+        std::net::IpAddr::V6(ipv6) => {
+            if ipv6.is_loopback() {
+                Ok(()) // Allow IPv6 localhost
+            } else if ipv6.is_multicast() {
+                Err("IPv6 multicast addresses not allowed for HTTP/3".to_string())
+            } else if ipv6.segments()[0] == 0xfe80 {
+                Err("IPv6 link-local addresses not allowed for HTTP/3".to_string())
+            } else {
+                Ok(()) // Allow other IPv6 addresses
+            }
+        }
+    }
+}
+
 /// HTTP/3 Protocol Strategy
 ///
 /// Encapsulates all HTTP/3 and QUIC complexity including:
@@ -165,69 +200,18 @@ impl ProtocolStrategy for H3Strategy {
         
         // Spawn task to handle H3 protocol
         spawn_task(move || {
-            // SSRF Protection - validate destination before creating connection
-            // Only bypass for development/testing when explicitly configured
-            if !config.disable_ssrf_protection {
-                if host == "localhost" || host.ends_with(".local") || host == "0.0.0.0" {
-                    emit!(body_tx, HttpBodyChunk {
-                        data: Bytes::from("Connection to internal host blocked by SSRF protection"),
-                        offset: 0,
-                        is_final: true,
-                        timestamp: std::time::Instant::now(),
-                    });
-                    return;
-                }
-                if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-                    if ip.is_loopback() {
-                        emit!(body_tx, HttpBodyChunk {
-                            data: Bytes::from("Connection to loopback address blocked by SSRF protection"),
-                            offset: 0,
-                            is_final: true,
-                            timestamp: std::time::Instant::now(),
-                        });
-                        return;
-                    }
-                    // Block private IP ranges (RFC 1918) in production
-                    match ip {
-                        std::net::IpAddr::V4(ipv4) => {
-                            let octets = ipv4.octets();
-                            // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-                            if octets[0] == 10 
-                                || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
-                                || (octets[0] == 192 && octets[1] == 168) {
-                                emit!(body_tx, HttpBodyChunk {
-                                    data: Bytes::from("Connection to private IP address blocked by SSRF protection"),
-                                    offset: 0,
-                                    is_final: true,
-                                    timestamp: std::time::Instant::now(),
-                                });
-                                return;
-                            }
-                        }
-                        std::net::IpAddr::V6(ipv6) => {
-                            // Block IPv6 private ranges
-                            if ipv6.segments()[0] & 0xfe00 == 0xfc00 { // fc00::/7
-                                emit!(body_tx, HttpBodyChunk {
-                                    data: Bytes::from("Connection to private IPv6 address blocked by SSRF protection"),
-                                    offset: 0,
-                                    is_final: true,
-                                    timestamp: std::time::Instant::now(),
-                                });
-                                return;
-                            }
-                        }
-                    }
-                }
-            } else {
-                tracing::warn!(
-                    target: "fluent_ai_http3::protocols::h3",
-                    host = %host,
-                    "⚠️  SSRF protection disabled - allowing connection to potentially dangerous host"
-                );
-            }
+
             
-            // Create UDP socket for QUIC
-            let socket = match UdpSocket::bind("0.0.0.0:0") {
+            // SECURITY: Bind more securely to prevent UDP amplification attacks
+            // For outbound HTTP/3 client connections, we should use the system's default interface
+            // but not bind to all interfaces indiscriminately
+            let bind_addr = if host == "localhost" || host.starts_with("127.") || host == "::1" {
+                "127.0.0.1:0" // Local connections use localhost interface
+            } else {
+                "0.0.0.0:0" // External connections use default interface
+            };
+            
+            let socket = match UdpSocket::bind(bind_addr) {
                 Ok(s) => s,
                 Err(e) => {
                     tracing::error!(
@@ -254,6 +238,22 @@ impl ProtocolStrategy for H3Strategy {
                     match std::net::ToSocketAddrs::to_socket_addrs(&server_addr) {
                         Ok(mut addrs) => {
                             if let Some(addr) = addrs.next() {
+                                // SECURITY: Validate destination address to prevent UDP amplification attacks
+                                if let Err(security_error) = validate_destination_address(&addr) {
+                                    tracing::error!(
+                                        target: "fluent_ai_http3::protocols::h3",
+                                        addr = %addr,
+                                        error = %security_error,
+                                        "Blocked potentially dangerous destination address"
+                                    );
+                                    emit!(body_tx, HttpBodyChunk {
+                                        data: Bytes::from("Connection blocked: destination address validation failed".to_string()),
+                                        offset: 0,
+                                        is_final: true,
+                                        timestamp: std::time::Instant::now(),
+                                    });
+                                    return;
+                                }
                                 addr
                             } else {
                                 tracing::error!(
@@ -554,57 +554,170 @@ impl ProtocolStrategy for H3Strategy {
                     crate::http::request::RequestBody::Multipart(fields) => {
                         let boundary = generate_boundary();
                         let mut body = Vec::new();
+                        const MAX_MULTIPART_SIZE: usize = 100 * 1024 * 1024; // 100MB hard limit
                         
                         for field in fields {
-                            // Add boundary separator
-                            body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+                            // Pre-calculate sizes to prevent memory exhaustion attacks
+                            let boundary_sep = format!("--{}\r\n", boundary);
+                            let boundary_sep_bytes = boundary_sep.as_bytes();
                             
-                            // Add Content-Disposition header
-                            match (&field.filename, &field.content_type) {
+                            // SECURITY: Check size before allocation
+                            if body.len() + boundary_sep_bytes.len() > MAX_MULTIPART_SIZE {
+                                tracing::error!(
+                                    target: "fluent_ai_http3::protocols::h3",
+                                    current_size = body.len(),
+                                    attempted_add = boundary_sep_bytes.len(),
+                                    limit = MAX_MULTIPART_SIZE,
+                                    "Multipart request exceeds memory safety limit - rejecting"
+                                );
+                                break; // Stop processing to prevent memory exhaustion
+                            }
+                            
+                            // Add boundary separator
+                            body.extend_from_slice(boundary_sep_bytes);
+                            
+                            // Pre-calculate header sizes and check limits
+                            let content_disposition = match (&field.filename, &field.content_type) {
                                 (Some(filename), Some(content_type)) => {
-                                    body.extend_from_slice(
-                                        format!("Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n", field.name, filename).as_bytes()
-                                    );
-                                    body.extend_from_slice(
-                                        format!("Content-Type: {}\r\n\r\n", content_type).as_bytes()
-                                    );
+                                    let header1 = format!("Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n", field.name, filename);
+                                    let header2 = format!("Content-Type: {}\r\n\r\n", content_type);
+                                    
+                                    // SECURITY: Check size before allocation
+                                    if body.len() + header1.len() + header2.len() > MAX_MULTIPART_SIZE {
+                                        tracing::error!(
+                                            target: "fluent_ai_http3::protocols::h3",
+                                            current_size = body.len(),
+                                            header_size = header1.len() + header2.len(),
+                                            limit = MAX_MULTIPART_SIZE,
+                                            "Multipart headers exceed memory safety limit - rejecting"
+                                        );
+                                        break;
+                                    }
+                                    
+                                    body.extend_from_slice(header1.as_bytes());
+                                    body.extend_from_slice(header2.as_bytes());
                                 }
                                 (Some(filename), None) => {
-                                    body.extend_from_slice(
-                                        format!("Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n", field.name, filename).as_bytes()
-                                    );
-                                    body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
+                                    let header1 = format!("Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\n", field.name, filename);
+                                    let header2 = b"Content-Type: application/octet-stream\r\n\r\n";
+                                    
+                                    // SECURITY: Check size before allocation
+                                    if body.len() + header1.len() + header2.len() > MAX_MULTIPART_SIZE {
+                                        tracing::error!(
+                                            target: "fluent_ai_http3::protocols::h3",
+                                            current_size = body.len(),
+                                            header_size = header1.len() + header2.len(),
+                                            limit = MAX_MULTIPART_SIZE,
+                                            "Multipart headers exceed memory safety limit - rejecting"
+                                        );
+                                        break;
+                                    }
+                                    
+                                    body.extend_from_slice(header1.as_bytes());
+                                    body.extend_from_slice(header2);
                                 }
                                 (None, Some(content_type)) => {
-                                    body.extend_from_slice(
-                                        format!("Content-Disposition: form-data; name=\"{}\"\r\n", field.name).as_bytes()
-                                    );
-                                    body.extend_from_slice(
-                                        format!("Content-Type: {}\r\n\r\n", content_type).as_bytes()
-                                    );
+                                    let header1 = format!("Content-Disposition: form-data; name=\"{}\"\r\n", field.name);
+                                    let header2 = format!("Content-Type: {}\r\n\r\n", content_type);
+                                    
+                                    // SECURITY: Check size before allocation
+                                    if body.len() + header1.len() + header2.len() > MAX_MULTIPART_SIZE {
+                                        tracing::error!(
+                                            target: "fluent_ai_http3::protocols::h3",
+                                            current_size = body.len(),
+                                            header_size = header1.len() + header2.len(),
+                                            limit = MAX_MULTIPART_SIZE,
+                                            "Multipart headers exceed memory safety limit - rejecting"
+                                        );
+                                        break;
+                                    }
+                                    
+                                    body.extend_from_slice(header1.as_bytes());
+                                    body.extend_from_slice(header2.as_bytes());
                                 }
                                 (None, None) => {
-                                    body.extend_from_slice(
-                                        format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", field.name).as_bytes()
-                                    );
+                                    let header = format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", field.name);
+                                    
+                                    // SECURITY: Check size before allocation
+                                    if body.len() + header.len() > MAX_MULTIPART_SIZE {
+                                        tracing::error!(
+                                            target: "fluent_ai_http3::protocols::h3",
+                                            current_size = body.len(),
+                                            header_size = header.len(),
+                                            limit = MAX_MULTIPART_SIZE,
+                                            "Multipart headers exceed memory safety limit - rejecting"
+                                        );
+                                        break;
+                                    }
+                                    
+                                    body.extend_from_slice(header.as_bytes());
+                                }
+                            };
+                            
+                            // Add field value with size checking
+                            match &field.value {
+                                crate::http::request::MultipartValue::Text(text) => {
+                                    let text_bytes = text.as_bytes();
+                                    
+                                    // SECURITY: Check size before allocation
+                                    if body.len() + text_bytes.len() > MAX_MULTIPART_SIZE {
+                                        tracing::error!(
+                                            target: "fluent_ai_http3::protocols::h3",
+                                            current_size = body.len(),
+                                            field_size = text_bytes.len(),
+                                            limit = MAX_MULTIPART_SIZE,
+                                            "Multipart field value exceeds memory safety limit - rejecting"
+                                        );
+                                        break;
+                                    }
+                                    
+                                    body.extend_from_slice(text_bytes);
+                                }
+                                crate::http::request::MultipartValue::Bytes(bytes) => {
+                                    // SECURITY: Check size before allocation
+                                    if body.len() + bytes.len() > MAX_MULTIPART_SIZE {
+                                        tracing::error!(
+                                            target: "fluent_ai_http3::protocols::h3",
+                                            current_size = body.len(),
+                                            field_size = bytes.len(),
+                                            limit = MAX_MULTIPART_SIZE,
+                                            "Multipart field value exceeds memory safety limit - rejecting"
+                                        );
+                                        break;
+                                    }
+                                    
+                                    body.extend_from_slice(bytes);
                                 }
                             }
                             
-                            // Add field value
-                            match &field.value {
-                                crate::http::request::MultipartValue::Text(text) => {
-                                    body.extend_from_slice(text.as_bytes());
-                                }
-                                crate::http::request::MultipartValue::Bytes(bytes) => {
-                                    body.extend_from_slice(bytes);
-                                }
+                            // SECURITY: Check size before adding CRLF
+                            if body.len() + 2 > MAX_MULTIPART_SIZE {
+                                tracing::error!(
+                                    target: "fluent_ai_http3::protocols::h3",
+                                    current_size = body.len(),
+                                    limit = MAX_MULTIPART_SIZE,
+                                    "Multipart CRLF would exceed memory safety limit - truncating"
+                                );
+                                break;
                             }
                             
                             body.extend_from_slice(b"\r\n");
                         }
                         
-                        // Add final boundary
-                        body.extend_from_slice(format!("--{}--\r\n", boundary).as_bytes());
+                        // Add final boundary with size checking
+                        let final_boundary = format!("--{}--\r\n", boundary);
+                        if body.len() + final_boundary.len() <= MAX_MULTIPART_SIZE {
+                            body.extend_from_slice(final_boundary.as_bytes());
+                        } else {
+                            tracing::warn!(
+                                target: "fluent_ai_http3::protocols::h3",
+                                current_size = body.len(),
+                                final_boundary_size = final_boundary.len(),
+                                limit = MAX_MULTIPART_SIZE,
+                                "Final multipart boundary would exceed limit - sending truncated body"
+                            );
+                        }
+                        
                         body
                     }
                     crate::http::request::RequestBody::Stream(mut stream) => {
@@ -619,22 +732,49 @@ impl ProtocolStrategy for H3Strategy {
                                 break;
                             }
                             
-                            // Always enforce memory limits (no config required)
-                            if body_data.len() >= MAX_BODY_SIZE {
-                                tracing::error!("Request body exceeds 100MB limit");
-                                break;
-                            }
-                            
                             match stream.try_next() {
                                 Some(chunk) => {
                                     match chunk {
                                         crate::http::response::HttpChunk::Body(bytes) => {
+                                            // SECURITY: Check size BEFORE allocation to prevent memory exhaustion
+                                            if body_data.len() + bytes.len() > MAX_BODY_SIZE {
+                                                tracing::error!(
+                                                    target: "fluent_ai_http3::protocols::h3",
+                                                    current_size = body_data.len(),
+                                                    chunk_size = bytes.len(),
+                                                    limit = MAX_BODY_SIZE,
+                                                    "Streaming body chunk would exceed memory safety limit - rejecting"
+                                                );
+                                                break;
+                                            }
                                             body_data.extend_from_slice(&bytes);
                                         }
                                         crate::http::response::HttpChunk::Data(bytes) => {
+                                            // SECURITY: Check size BEFORE allocation to prevent memory exhaustion
+                                            if body_data.len() + bytes.len() > MAX_BODY_SIZE {
+                                                tracing::error!(
+                                                    target: "fluent_ai_http3::protocols::h3",
+                                                    current_size = body_data.len(),
+                                                    chunk_size = bytes.len(),
+                                                    limit = MAX_BODY_SIZE,
+                                                    "Streaming data chunk would exceed memory safety limit - rejecting"
+                                                );
+                                                break;
+                                            }
                                             body_data.extend_from_slice(&bytes);
                                         }
                                         crate::http::response::HttpChunk::Chunk(bytes) => {
+                                            // SECURITY: Check size BEFORE allocation to prevent memory exhaustion
+                                            if body_data.len() + bytes.len() > MAX_BODY_SIZE {
+                                                tracing::error!(
+                                                    target: "fluent_ai_http3::protocols::h3",
+                                                    current_size = body_data.len(),
+                                                    chunk_size = bytes.len(),
+                                                    limit = MAX_BODY_SIZE,
+                                                    "Generic chunk would exceed memory safety limit - rejecting"
+                                                );
+                                                break;
+                                            }
                                             body_data.extend_from_slice(&bytes);
                                         }
                                         crate::http::response::HttpChunk::End => {

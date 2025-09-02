@@ -194,16 +194,7 @@ impl Http3Builder<BodyNotSet> {
         Self::new(&client).content_type(ContentType::ApplicationJson)
     }
 
-    /// Create development JSON builder with SSRF protection disabled
-    /// 
-    /// ⚠️  **SECURITY WARNING**: This builder disables SSRF protection and allows
-    /// connections to localhost and internal networks. Only use in development/testing
-    /// environments. DO NOT use in production.
-    #[must_use]
-    pub fn development() -> Self {
-        let client = HttpClient::development();
-        Self::new(&client).content_type(ContentType::ApplicationJson)
-    }
+
 
     /// Shorthand for setting Content-Type to application/x-www-form-urlencoded
     ///

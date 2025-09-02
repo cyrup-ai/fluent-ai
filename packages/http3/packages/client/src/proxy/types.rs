@@ -40,8 +40,10 @@ impl MessageChunk for ProxyUrl {
             .unwrap_or_else(|_| {
                 // Last resort - create a basic URL that should always work
                 // This should never fail as it's a valid URL
+                // SECURITY: Handle fallback URL parsing gracefully to prevent panics
                 crate::Url::parse("http://invalid")
-                    .expect("Basic fallback URL should always parse")
+                    .or_else(|_| crate::Url::parse("http://localhost"))
+                    .unwrap_or_else(|_| crate::Url::parse("http://127.0.0.1").expect("127.0.0.1 must parse"))
             });
 
         ProxyUrl {

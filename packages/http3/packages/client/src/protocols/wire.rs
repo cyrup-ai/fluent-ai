@@ -472,7 +472,7 @@ impl H3FrameParser {
     }
 
     /// Read varint from buffer using streaming pattern
-    fn read_varint_streaming(data: Vec<u8>) -> AsyncStream<FrameChunk, 1024> {
+    fn read_varint_streaming(data: Vec<u8>, stream_id: u64) -> AsyncStream<FrameChunk, 1024> {
         AsyncStream::with_channel(move |sender| {
             let mut value = 0u64;
             let mut shift = 0;
@@ -485,7 +485,7 @@ impl H3FrameParser {
                 if byte & 0x80 == 0 {
                     // Successfully parsed varint - emit as data frame
                     let data_frame = H3Frame::Data {
-                        stream_id: 0, // Default stream ID for now
+                        stream_id,
                         data: value.to_be_bytes().to_vec(),
                     };
                     emit!(sender, FrameChunk::H3(data_frame));

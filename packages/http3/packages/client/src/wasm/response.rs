@@ -147,7 +147,7 @@ impl WasmResponse {
             web_response: Some(web_response),
             abort_controller,
             url,
-            redirected: false, // TODO: Extract from web response
+            redirected: web_response.redirected(), // Extract redirected status from web response
             response_type: response_type.to_string(),
         })
     }

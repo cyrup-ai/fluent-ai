@@ -45,16 +45,7 @@ impl Http3 {
         Http3Builder::json()
     }
 
-    /// Create development JSON HTTP builder with SSRF protection disabled
-    /// 
-    /// ⚠️  **SECURITY WARNING**: This builder disables SSRF protection and allows
-    /// connections to localhost and internal networks. Only use in development/testing
-    /// environments. DO NOT use in production.
-    /// 
-    /// Shorthand for `Http3Builder::development()`
-    pub fn development() -> Http3Builder {
-        Http3Builder::development()
-    }
+
 
     /// Create a new form-urlencoded HTTP builder
     /// 

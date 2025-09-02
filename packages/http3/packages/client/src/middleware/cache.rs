@@ -14,12 +14,23 @@ use super::Middleware;
 use crate::cache::{CacheKey, CacheEntry, GLOBAL_CACHE, httpdate};
 use crate::http::response::{HttpBodyChunk, HttpHeader};
 use crate::{HttpRequest, HttpResponse};
+use crate::error::{HttpError, Kind as ErrorKind};
+
+/// Request context for cache key generation
+#[derive(Debug, Clone)]
+struct RequestContext {
+    url: String,
+    method: String,
+    headers: Vec<(String, String)>,
+}
 
 /// Cache middleware for HTTP requests/responses with zero-allocation design
 #[derive(Debug)]
 pub struct CacheMiddleware {
     enabled: bool,
     cache_key_buffer: Arc<str>,
+    /// Store request context for use in process_response
+    request_context: std::sync::RwLock<Option<RequestContext>>,
 }
 
 impl Default for CacheMiddleware {
@@ -35,6 +46,7 @@ impl CacheMiddleware {
         Self {
             enabled: true,
             cache_key_buffer: Arc::from(""),
+            request_context: std::sync::RwLock::new(None),
         }
     }
 
@@ -43,6 +55,7 @@ impl CacheMiddleware {
         Self {
             enabled,
             cache_key_buffer: Arc::from(""),
+            request_context: std::sync::RwLock::new(None),
         }
     }
 
@@ -66,7 +79,29 @@ impl Middleware for CacheMiddleware {
 
         let uri = request.uri();
         let method = request.method().as_str();
-        let cache_key = self.generate_cache_key(method, &uri, &[]);
+        
+        // Extract relevant headers for cache key generation
+        let headers: Vec<(String, String)> = request.headers()
+            .iter()
+            .filter(|(name, _)| {
+                // Only include headers that affect caching
+                matches!(name.as_str(), "accept" | "accept-language" | "accept-encoding" | "authorization")
+            })
+            .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
+            .collect();
+        
+        // Store request context for use in process_response
+        let context = RequestContext {
+            url: uri,
+            method: method.to_string(),
+            headers: headers.clone(),
+        };
+        
+        if let Ok(mut ctx) = self.request_context.write() {
+            *ctx = Some(context);
+        }
+        
+        let cache_key = self.generate_cache_key(method, &request.uri(), &[]);
 
         match GLOBAL_CACHE.get(&cache_key) {
             Some(cached_entry) => {
@@ -107,17 +142,167 @@ impl Middleware for CacheMiddleware {
             return Ok(response);
         }
 
-        // TODO: Cache streaming response - requires URL from request context
-        // Note: HttpResponse doesn't contain URL information, so caching
-        // needs to be redesigned to work with request-response pairs
-        // or URL needs to be passed separately to the middleware
+        // Get stored request context
+        let context = {
+            if let Ok(ctx_guard) = self.request_context.read() {
+                ctx_guard.clone()
+            } else {
+                return Ok(response); // Unable to read context, skip caching
+            }
+        };
         
-        // For now, skip caching to fix compilation error
-        // let cache_key = self.generate_cache_key("GET", "unknown", &[]);
-        
-        // HttpResponse is a streaming type and doesn't implement Clone
-        // Caching would need to intercept chunks from the body stream
+        let context = match context {
+            Some(ctx) => ctx,
+            None => {
+                tracing::warn!(
+                    target: "fluent_ai_http3::middleware::cache",
+                    "No request context available for response caching, skipping cache"
+                );
+                return Ok(response);
+            }
+        };
 
-        Ok(response)
+        // Generate cache key using stored request context
+        let headers_slice: Vec<(&str, &str)> = context.headers
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        let cache_key = self.generate_cache_key(&context.method, &context.url, &headers_slice);
+
+        // Implement streaming response caching with background task
+        // Extract stream_id and version before moving the response
+        let stream_id = response.stream_id;
+        let version = response.version;
+        
+        // Clone response streams for concurrent processing - one for forwarding, one for caching
+        let (headers_stream, body_stream, trailers_stream) = response.into_streams();
+        
+        // Create response streams for forwarding to client
+        let (forward_headers_tx, forward_headers_stream) = AsyncStream::<HttpHeader, 256>::channel();
+        let (forward_body_tx, forward_body_stream) = AsyncStream::<HttpBodyChunk, 1024>::channel();
+        let (forward_trailers_tx, forward_trailers_stream) = AsyncStream::<HttpHeader, 64>::channel();
+        
+        // Create response streams for caching
+        let (cache_headers_tx, cache_headers_stream) = AsyncStream::<HttpHeader, 256>::channel();
+        let (cache_body_tx, cache_body_stream) = AsyncStream::<HttpBodyChunk, 1024>::channel();
+        let (cache_trailers_tx, cache_trailers_stream) = AsyncStream::<HttpHeader, 64>::channel();
+        
+        // Spawn background task for concurrent stream processing
+        fluent_ai_async::spawn_task(move || {
+            let mut cached_headers = Vec::new();
+            let mut cached_body_chunks = Vec::new();
+            let mut cached_trailers = Vec::new();
+            let mut total_body_size = 0usize;
+            const MAX_CACHEABLE_SIZE: usize = 10 * 1024 * 1024; // 10MB limit for cacheable responses
+            
+            // Process headers stream
+            for header in headers_stream {
+                cached_headers.push(header.clone());
+                fluent_ai_async::emit!(forward_headers_tx, header.clone());
+                fluent_ai_async::emit!(cache_headers_tx, header);
+            }
+            
+            // Process body stream with size monitoring
+            for body_chunk in body_stream {
+                let chunk_size = body_chunk.data.len();
+                total_body_size += chunk_size;
+                
+                // Forward chunk to client immediately for streaming
+                fluent_ai_async::emit!(forward_body_tx, body_chunk.clone());
+                
+                // Only cache if response is within size limit
+                if total_body_size <= MAX_CACHEABLE_SIZE {
+                    cached_body_chunks.push(body_chunk.data.clone());
+                    fluent_ai_async::emit!(cache_body_tx, body_chunk);
+                } else {
+                    // Response too large for caching, log and stop caching
+                    tracing::info!(
+                        target: "fluent_ai_http3::middleware::cache",
+                        cache_key = %cache_key.url,
+                        body_size = total_body_size,
+                        limit = MAX_CACHEABLE_SIZE,
+                        "Response exceeds cacheable size limit - forwarding without caching"
+                    );
+                    return; // Exit caching task but continue forwarding
+                }
+            }
+            
+            // Process trailers stream
+            for trailer in trailers_stream {
+                cached_trailers.push(trailer.clone());
+                fluent_ai_async::emit!(forward_trailers_tx, trailer.clone());
+                fluent_ai_async::emit!(cache_trailers_tx, trailer);
+            }
+            
+            // Create cache entry from collected data
+            if !cached_body_chunks.is_empty() || !cached_headers.is_empty() {
+                // Combine body chunks into single buffer
+                let cached_body: Vec<u8> = cached_body_chunks.into_iter().flat_map(|chunk| chunk).collect();
+                
+                // Create HttpResponse streams for cache entry creation
+                let (cache_entry_headers_tx, cache_entry_headers_stream) = AsyncStream::<HttpHeader, 256>::channel();
+                let (cache_entry_body_tx, cache_entry_body_stream) = AsyncStream::<HttpBodyChunk, 1024>::channel();
+                let (_, cache_entry_trailers_stream) = AsyncStream::<HttpHeader, 64>::channel();
+                
+                // Emit cached headers to the stream
+                for header in cached_headers {
+                    fluent_ai_async::emit!(cache_entry_headers_tx, header);
+                }
+                
+                // Emit cached body to the stream
+                if !cached_body.is_empty() {
+                    let body_chunk = HttpBodyChunk::new(Bytes::from(cached_body), 0, true);
+                    fluent_ai_async::emit!(cache_entry_body_tx, body_chunk);
+                }
+                
+                // Create HttpResponse for cache entry
+                let cache_response = HttpResponse::new(
+                    cache_entry_headers_stream,
+                    cache_entry_body_stream, 
+                    cache_entry_trailers_stream,
+                    http::Version::HTTP_11, // Default version for cached response
+                    0, // Default stream_id
+                );
+                
+                // Create cache entry asynchronously with proper await
+                fluent_ai_async::spawn_task(move || {
+                    // Use tokio runtime to properly execute async cache operations
+                    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                        handle.block_on(async move {
+                            match CacheEntry::new(cache_response).await {
+                                cache_entry => {
+                                    // Store in global cache using existing put method
+                                    GLOBAL_CACHE.put(cache_key.clone(), HttpResponse::from_cache_entry(cache_entry)).await;
+                                    
+                                    tracing::debug!(
+                                        target: "fluent_ai_http3::middleware::cache",
+                                        cache_key = %cache_key.url,
+                                        body_size = total_body_size,
+                                        "Streaming response successfully cached in background"
+                                    );
+                                }
+                            }
+                        });
+                    } else {
+                        tracing::warn!(
+                            target: "fluent_ai_http3::middleware::cache",
+                            cache_key = %cache_key.url,
+                            "No tokio runtime available for cache storage - caching skipped"
+                        );
+                    }
+                });
+            }
+        });
+        
+        // Create new response from forwarding streams
+        let cached_response = HttpResponse::new(
+            forward_headers_stream,
+            forward_body_stream,
+            forward_trailers_stream,
+            version,
+            stream_id,
+        );
+        
+        Ok(cached_response)
     }
 }

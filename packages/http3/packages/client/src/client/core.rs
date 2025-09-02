@@ -113,22 +113,7 @@ impl HttpClient {
         }
     }
 
-    /// Create HttpClient for development/testing with SSRF protection disabled
-    ///
-    /// ⚠️  **SECURITY WARNING**: This client disables SSRF protection and allows
-    /// connections to localhost and internal networks. Only use in development/testing
-    /// environments. DO NOT use in production.
-    #[inline]
-    pub fn development() -> Self {
-        use crate::protocols::strategy::{HttpProtocolStrategy, H3Config};
-        let strategy = HttpProtocolStrategy::Http3(H3Config::development());
-        Self {
-            config: HttpConfig::default(),
-            stats: Arc::new(ClientStats::default()),
-            strategy,
-            created_at: Instant::now(),
-        }
-    }
+
 
     /// Get client statistics for monitoring and telemetry
     #[inline]

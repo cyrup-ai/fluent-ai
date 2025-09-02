@@ -216,8 +216,9 @@ impl Default for TransportConnection {
             connection_id: String::new(),
             transport_type: TransportType::Auto,
             connection: Connection::default(),
+            // SECURITY: Handle hardcoded address parsing gracefully to prevent panics
             remote_addr: "0.0.0.0:0".parse()
-                .expect("Hardcoded default socket address should always parse successfully"),
+                .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 0))),
             config: TransportConfig::default(),
         }
     }
@@ -229,8 +230,9 @@ impl MessageChunk for TransportConnection {
             connection_id: "error".to_string(),
             transport_type: TransportType::Auto,
             connection: Connection::bad_chunk(error),
+            // SECURITY: Handle hardcoded address parsing gracefully to prevent panics
             remote_addr: "0.0.0.0:0".parse()
-                .expect("Hardcoded default socket address should always parse successfully"),
+                .unwrap_or_else(|_| std::net::SocketAddr::from(([0, 0, 0, 0], 0))),
             config: TransportConfig::default(),
         }
     }
@@ -321,12 +323,29 @@ pub mod utils {
         }
     }
 
-    /// Create default Quiche config for H3 connections
-    pub fn default_quiche_config() -> Config {
-        let mut config = Config::new(quiche::PROTOCOL_VERSION)
-            .expect("QUICHE protocol version should always be valid");
-        config.set_application_protos(&[b"h3"])
-            .expect("H3 application protocol should always be valid");
+    /// Create default Quiche config for H3 connections with graceful error handling
+    pub fn default_quiche_config() -> Result<Config, String> {
+        // SECURITY: Handle quiche configuration errors gracefully instead of panicking
+        let mut config = match Config::new(quiche::PROTOCOL_VERSION) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                tracing::error!(
+                    target: "fluent_ai_http3::protocols::transport",
+                    error = %e,
+                    "Failed to create QUICHE config - using fallback HTTP/2"
+                );
+                return Err("QUICHE initialization failed - HTTP/3 unavailable".to_string());
+            }
+        };
+        
+        if let Err(e) = config.set_application_protos(&[b"h3"]) {
+            tracing::error!(
+                target: "fluent_ai_http3::protocols::transport",
+                error = %e,
+                "Failed to set H3 application protocol - using fallback HTTP/2"
+            );
+            return Err("H3 protocol configuration failed - HTTP/3 unavailable".to_string());
+        }
         config.set_max_idle_timeout(30000);
         config.set_max_recv_udp_payload_size(1350);
         config.set_max_send_udp_payload_size(1350);
@@ -336,7 +355,7 @@ pub mod utils {
         config.set_initial_max_streams_bidi(100);
         config.set_initial_max_streams_uni(100);
         config.set_disable_active_migration(true);
-        config
+        Ok(config)
     }
 }
 
@@ -410,7 +429,21 @@ impl TransportFactory {
                 transport_type: TransportType::H3,
                 ..Default::default()
             };
-            config.quiche_config = Some(utils::default_quiche_config());
+            config.quiche_config = Some(match utils::default_quiche_config() {
+                Ok(cfg) => cfg,
+                Err(e) => {
+                    tracing::error!(
+                        target: "fluent_ai_http3::protocols::transport",
+                        error = %e,
+                        "Failed to create default QUICHE config"
+                    );
+                    // Emit error TransportConnection and return
+                    fluent_ai_async::emit!(sender, TransportConnection::bad_chunk(
+                        format!("Failed to create QUICHE config: {}", e)
+                    ));
+                    return;
+                }
+            });
 
             let transport_conn = TransportConnection::new(
                 connection_id,

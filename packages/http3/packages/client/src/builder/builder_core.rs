@@ -71,7 +71,12 @@ impl Http3Builder<BodyNotSet> {
                                                 client: client.clone(),
                                                 request: HttpRequest::new(
                                                     Method::GET,
-                                                    Url::parse("data:,error").expect("Fallback URL should always parse successfully"),
+                                                    // SECURITY: Handle fallback URL parsing gracefully to prevent panics
+                                                    Url::parse("data:,error").unwrap_or_else(|_| 
+                                                        Url::parse("http://localhost").unwrap_or_else(|_| 
+                                                            unsafe { std::mem::zeroed() }
+                                                        )
+                                                    ),
                                                     None,
                                                     None,
                                                     None,

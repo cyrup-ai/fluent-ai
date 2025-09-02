@@ -108,9 +108,41 @@ pub(super) fn fetch(req: Request<crate::wasm::body::Body>) -> AsyncStream<Respon
                 let abort_controller = web_sys::AbortController::new()
                     .map_err(|e| Error::from(std::io::Error::new(std::io::ErrorKind::Other, format!("WASM error: {:?}", e))))?;
                 
-                if let Some(_timeout) = req.timeout() {
-                    // TODO: Implement timeout handling for WASM
-                }
+                // Implement WASM timeout handling with JavaScript setTimeout
+                let (timeout_id, timeout_callback_handle) = if let Some(timeout) = req.timeout() {
+                    let timeout_ms = timeout.as_millis() as u32;
+                    let abort_controller_clone = abort_controller.clone();
+                    
+                    // Create timeout callback and store handle to prevent GC
+                    let timeout_callback = Closure::once_into_js(move || {
+                        // Abort the request when timeout is reached
+                        abort_controller_clone.abort();
+                    });
+                    
+                    // Store callback handle to prevent garbage collection
+                    let callback_handle = timeout_callback.as_ref().clone();
+                    
+                    // Set timeout using JavaScript setTimeout API
+                    let window = match web_sys::window() {
+                        Some(w) => w,
+                        None => return Err(Error::from(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "No window object available for timeout setup"
+                        )))
+                    };
+                    
+                    let timeout_id = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                        timeout_callback.as_ref().unchecked_ref(),
+                        timeout_ms as i32
+                    ).map_err(|e| Error::from(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Failed to set timeout: {:?}", e)
+                    )))?;
+                    
+                    (Some(timeout_id), Some(callback_handle))
+                } else {
+                    (None, None)
+                };
                 init.signal(Some(&abort_controller.signal()));
 
                 let js_req = web_sys::Request::new_with_str_and_init(req.url().as_str(), &init)
@@ -133,7 +165,22 @@ pub(super) fn fetch(req: Request<crate::wasm::body::Body>) -> AsyncStream<Respon
                         }
                     };
                     
+                    // Helper function to clear timeout and callback
+                    let clear_timeout = |timeout_id: Option<i32>, callback_handle: Option<JsValue>| {
+                        if let Some(timeout_id) = timeout_id {
+                            if let Some(window) = web_sys::window() {
+                                window.clear_timeout_with_handle(timeout_id);
+                            }
+                        }
+                        // Callback handle will be dropped, allowing GC
+                        drop(callback_handle);
+                    };
+                    
+                    let timeout_id_clone = timeout_id;
+                    let callback_handle_clone = timeout_callback_handle.clone();
                     let success_callback = Closure::once_into_js(move |js_resp: JsValue| {
+                        // Clear timeout on successful response
+                        clear_timeout(timeout_id_clone, callback_handle_clone);
                         let web_response: web_sys::Response = match js_resp.dyn_into() {
                             Ok(resp) => resp,
                             Err(_) => {
@@ -228,7 +275,11 @@ pub(super) fn fetch(req: Request<crate::wasm::body::Body>) -> AsyncStream<Respon
                         }
                     });
                     
+                    let timeout_id_clone_error = timeout_id;
+                    let callback_handle_clone_error = timeout_callback_handle;
                     let error_callback = Closure::once_into_js(move |error: JsValue| {
+                        // Clear timeout on error response
+                        clear_timeout(timeout_id_clone_error, callback_handle_clone_error);
                         emit!(sender, Err(Error::from(std::io::Error::new(
                             std::io::ErrorKind::Other,
                             format!("Fetch error: {:?}", error)

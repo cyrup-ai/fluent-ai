@@ -433,14 +433,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧪 Testing Http3 builder with EXACT syntax patterns...\n");
 
     // Stream of HttpChunk or mixed BadHttpChunk
-    let _response: SerdeResponseType = Http3::development() // Use development config for local testing
+    let _response: SerdeResponseType = Http3::json()
         .debug() // Enable debug logging
         .headers([("x-api-key", "abc123")])
         .body(&request)
         .post(&server_url).collect_one();
 
     // collect to Serde mapped type
-    let response_data: SerdeResponseType = Http3::development() // Use development config for local testing
+    let response_data: SerdeResponseType = Http3::json()
         .accept_content_type(ContentType::ApplicationJson)
         .headers([("x-api-key", "abc123")])
         .body(&request)
@@ -449,7 +449,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📥 Received response: {:?}", response_data);
 
     // shorthand
-    let response_data2: SerdeResponseType = Http3::development() // Use development config for local testing
+    let response_data2: SerdeResponseType = Http3::json()
         .api_key("abc123")
         .body(&request)
         .post(&server_url)
@@ -457,7 +457,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📥 Received response 2: {:?}", response_data2);
 
     // shorthand - form urlencoded with development config
-    let _serde_response_type: SerdeResponseType = Http3::development() // Use development config for local testing
+    let _serde_response_type: SerdeResponseType = Http3::json()
         .basic_auth([("user", "password")])
         .body(&request)
         .post(&server_url)
@@ -467,7 +467,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("🧪 Testing cyrup_sugars on_chunk beautiful syntax...");
 
     // Note: This demonstrates the beautiful on_chunk syntax with raw HTTP chunks
-    let _stream_with_error_handling: fluent_ai_async::AsyncStream<SerdeResponseType, 1024> = Http3::development() // Use development config for local testing
+    let _stream_with_error_handling: fluent_ai_async::AsyncStream<SerdeResponseType, 1024> = Http3::json()
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .on_chunk(|result| match result {
@@ -485,7 +485,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ cyrup_sugars on_chunk syntax demonstrated successfully!");
 
     // Stream of HttpChunk may have mixed BadHttpChunk
-    let error_response = Http3::development() // Use development config for local testing
+    let error_response = Http3::json()
         .headers([("foo", "bar"), ("fizz", "buzz")])
         .body(&request)
         .post(&server_url)
@@ -497,7 +497,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Download file example with proper URL
     let csv_url = format!("http://{}/download/file.csv", local_addr);
-    let download_result = Http3::development() // Use development config for local testing
+    let download_result = Http3::json()
         .headers([("x-api-key", "abc123")])
         .download_file(&csv_url)
         .save("/tmp/some.csv")
@@ -522,7 +522,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let json_url = format!("http://{}/put/json", local_addr);
-    let json_response: JsonResponse = Http3::development() // Use development config for local testing
+    let json_response: JsonResponse = Http3::json()
         .debug()
         .body(&json_request)
         .put(&json_url)
@@ -538,7 +538,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ]);
 
     let form_url = format!("http://{}/put/form", local_addr);
-    let form_response: FormResponse = Http3::development() // Use development config for local testing - form support
+    let form_response: FormResponse = Http3::json()
         .debug()
         .body(&form_params)
         .put(&form_url)
@@ -554,7 +554,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let binary_url = format!("http://{}/put/binary", local_addr);
-    let binary_response: BinaryResponse = Http3::development() // Use development config for local testing
+    let binary_response: BinaryResponse = Http3::json()
         .debug()
         .body(&binary_request)
         .put(&binary_url)
